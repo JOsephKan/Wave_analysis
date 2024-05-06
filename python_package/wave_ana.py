@@ -2,98 +2,146 @@
 import numpy as np
 from numba import njit
 
-# define DFT class
-class Fourier_trans:
-    def __init__(self):
-        self.N  = None,
-        self.Ck = None,
-        self.Sk = None
+def _FTOperator(arr, dim, func):
+    """
+    Apply the Fourier Transform operator to the input array along the specified dimension.
+
+    Parameters:
+    - arr: numpy.ndarray
+        The input array to apply the Fourier Transform operator to.
+    - dim: int
+        The dimension along which to apply the Fourier Transform operator.
+    - func: str
+        The type of Fourier Transform to apply. Valid options are "DFT" (Discrete Fourier Transform) and "IDFT" (Inverse Discrete Fourier Transform).
+
+    Returns:
+    - Ck: numpy.ndarray
+        The real part of the Fourier Transform result.
+    - Sk: numpy.ndarray
+        The imaginary part of the Fourier Transform result.
+    """
     
-    def _operator(self, arr, dim, func):
-        self.N = int(arr.shape[dim])
-        
-        n = (np.linspace(0, self.N-1, self.N)).reshape((1, self.N))
-        k = (2.*np.pi*np.linspace(0, self.N-1, self.N)/self.N).reshape((self.N, 1))
-    
-        op = np.exp(1j*(k*n))
+    N  = int(arr.shape[dim])
+    n  = (np.linspace(0, N-1, N)).reshape((1, N))
+    k  = (2.*np.pi*np.linspace(0, N-1, N)/N).reshape((N, 1))
+    op = np.exp(1j*(k*n))
+    if (func=="DFT"):
+        op_DFT = np.matmul(op, arr.T)/N
+        Ck = op_DFT.real
+        Sk = op_DFT.imag
+    elif (func=="IDFT"):
+        op_IDFT = op[:, :round(N/2.)]
+        Ck = op_IDFT.real
+        Sk = op_IDFT.imag
+    return Ck, Sk
 
-        if (func=="DFT"):
-            op_DFT = np.matmul(op, arr.T)/self.N
-            self.Ck = op_DFT.real
-            self.Sk = op_DFT.imag
+def _Nyquist(arr, arr_o, axis):
+    """
+    Apply the Nyquist operator to the input array.
 
-        elif (func=="IDFT"):
-            op_IDFT = op[:, :round(self.N/2.)]
-            self.Ck = op_IDFT.real
-            self.Sk = op_IDFT.imag
-            
-        return self.Ck, self.Sk        
+    Parameters:
+    - arr: numpy.ndarray
+        The input array to apply the Nyquist operator to.
+    - arr_o: numpy.ndarray
+        The original input array.
+    - axis: int
+        The axis along which to apply the Nyquist operator.
 
-    def DFT(self, arr):
-        
-        Ck, Sk = self._operator(arr, 1, "DFT")
+    Returns:
+    - arr_new: numpy.ndarray
+        The result of applying the Nyquist operator to the input array.
+    """
+    arr_new = arr[0 : round(arr_o.shape[axis] / 2), :]
+    arr_new = np.concatenate([arr_new[0, :]], arr_new[1:, :]*2, axis=0)
+    return arr_new
 
-        return Ck, Sk
+def DFT(arr):
+    """
+    Apply the Discrete Fourier Transform operator to the input array.
 
-    def IDFT(self, C_k, S_k, arr):
-        
-        Ck, Sk = self._operator(arr, 0, "IDFT")
+    Parameters:
+    - arr: numpy.ndarray
+        The input array to apply the Discrete Fourier Transform operator to.
 
-        Ck_i = np.matmul(Ck, C_k).T
-        Sk_i = np.matmul(Sk, S_k).T
-        
-        return Ck_i, Sk_i
+    Returns:
+    - Ck: numpy.ndarray
+        The real part of the Fourier Transform result.
+    - Sk: numpy.ndarray
+        The imaginary part of the Fourier Transform result.
+    """
+    Ck, Sk = _FTOperator(arr, 1, "DFT")
+    return Ck, Sk
 
-# define power spectrum class
-class power_spectrum(Fourier_trans):
-    def __init__(self):
-        self.A = None
-        self.B = None
-        self.a = None
-        self.b = None
-        self.power_pos = None
-        self.power_neg = None
+def IDFT(C_k, S_k, arr):
+    """
+    Apply the Inverse Discrete Fourier Transform operator to the input array.
 
-    def _Nyquist(self, arr, arr_o, axis):
-        arr_new = arr[0 : round(arr_o.shape[axis] / 2), :]
-        arr_new = arr_new * 2
-        return arr_new
+    Parameters:
+    - C_k: numpy.ndarray
+        The real part of the Fourier Transform result.
+    - S_k: numpy.ndarray
+        The imaginary part of the Fourier Transform result.
+    - arr: numpy.ndarray
+        The input array to apply the Inverse Discrete Fourier Transform operator to.
 
-    def power_coe(self, arr):
-        Ck, Sk = self.DFT(arr)
-        Ck = self._Nyquist(Ck, arr, 1)
-        Sk = self._Nyquist(Sk, arr, 1)
+    Returns:
+    - Ck_i: numpy.ndarray
+        The real part of the Inverse Fourier Transform result.
+    - Sk_i: numpy.ndarray
+        The imaginary part of the Inverse Fourier Transform result.
+    """
+    Ck, Sk = _FTOperator(arr, 0, "IDFT")
+    Ck_i = np.matmul(Ck, C_k).T
+    Sk_i = np.matmul(Sk, S_k).T
+    return Ck_i, Sk_i
 
-        A, B = self.DFT(Ck)
-        a, b = self.DFT(Sk)
+def PowerCoeff(arr):
+    """
+    Calculate the power coefficients of the input array.
 
-        self.A = self._Nyquist(A, arr, 0) 
-        self.B = self._Nyquist(B, arr, 0) 
-        self.a = self._Nyquist(a, arr, 0)
-        self.b = self._Nyquist(b, arr, 0)
-        
-        return self.A, self.B, self.a, self.b
+    Parameters:
+    - arr: numpy.ndarray
+        The input array to calculate the power coefficients of.
 
-    def power_spec(self, arr):
-        A, B, a, b = self.power_coe(arr)
-         
-        self.power_neg = 1 / 8 * (
-            np.power(A, 2)
-            + np.power(B, 2)
-            + np.power(a, 2)
-            + np.power(b, 2)
-        ) + 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
-        
-        self.power_pos = 1 / 8 * (
-            np.power(A, 2)
-            + np.power(B, 2)
-            + np.power(a, 2)
-            + np.power(b, 2)
-        ) - 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
-        
-        ps = np.append(self.power_neg[:, ::-1], self.power_pos, axis=1)
+    Returns:
+    - A: numpy.ndarray
+        The real part of the power coefficients.
+    - B: numpy.ndarray
+        The imaginary part of the power coefficients.
+    - a: numpy.ndarray
+        The real part of the power coefficients.
+    - b: numpy.ndarray
+        The imaginary part of the power coefficients.
+    """
+    Ck, Sk = DFT(arr)
+    Ck     = _Nyquist(Ck, arr, 1)
+    Sk     = _Nyquist(Sk, arr, 1)
 
-        return ps
+    A, B = DFT(Ck)
+    a, b = DFT(Sk)
+    A    = _Nyquist(A, arr, 0)
+    B    = _Nyquist(B, arr, 0)
+    a    = _Nyquist(a, arr, 0)
+    b    = _Nyquist(b, arr, 0)
+    return A, B, a, b
+
+def PowerSpec(arr):
+    """
+    Calculate the power spectrum of the input array.
+
+    Parameters:
+    - arr: numpy.ndarray
+        The input array to calculate the power spectrum of.
+
+    Returns:
+    - ps: numpy.ndarray
+        The power spectrum of the input array.
+    """
+    A, B, a, b = PowerCoeff(arr)
+    power_neg = 1 / 8 * (np.power(A, 2) + np.power(B, 2) + np.power(a, 2) + np.power(b, 2)) + 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
+    power_pos = 1 / 8 * (np.power(A, 2) + np.power(B, 2) + np.power(a, 2) + np.power(b, 2)) - 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
+    ps = np.append(power_neg[:, ::-1], power_pos, axis=1)
+    return ps
 
 class reconstruction(power_spectrum):
     def __init__(self):
