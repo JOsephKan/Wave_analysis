@@ -5,52 +5,48 @@ from numba import njit
 # define DFT class
 class Fourier_trans:
     def __init__(self):
-        self.N = None
-        self.n = None
-        self.k = None
-        self.C_k = None
-        self.S_k = None
-        self.c_i = None
-        self.s_i = None
-        self.N_i = None
-        self.n_i = None
-        self.k_i = None
-        self.C_k_i = None
-        self.S_k_i = None
+        self.N  = None,
+        self.Ck = None,
+        self.Sk = None
+    
+    def _operator(self, arr, dim, func):
+        self.N = int(arr.shape[dim])
+        
+        n = (np.linspace(0, self.N-1, self.N)).reshape((1, self.N))
+        k = (2.*np.pi*np.linspace(0, self.N-1, self.N)/self.N).reshape((self.N, 1))
+    
+        op = np.exp(1j*(k*n))
+
+        if (func=="DFT"):
+            op_DFT = np.matmul(op, arr.T)/self.N
+            self.Ck = op_DFT.real
+            self.Sk = op_DFT.imag
+
+        elif (func=="IDFT"):
+            op_IDFT = op[:, :round(self.N/2.)]
+            self.Ck = op_IDFT.real
+            self.Sk = op_IDFT.imag
+            
+        return self.Ck, self.Sk        
 
     def DFT(self, arr):
-        self.N = arr.shape[1]
+        
+        Ck, Sk = self._operator(arr, 1, "DFT")
 
-        self.n = np.matrix(np.linspace(0, self.N - 1, self.N))
-        self.k = 2 * np.pi * np.matrix(np.linspace(0, self.N - 1, self.N)) / self.N
-
-        self.C_k = np.cos(+self.k.T * self.n) * np.matrix(arr).T / (self.N)
-        self.S_k = np.sin(+self.k.T * self.n) * np.matrix(arr).T / (self.N)
-
-        return self.C_k, self.S_k
+        return Ck, Sk
 
     def IDFT(self, C_k, S_k, arr):
-        self.N_i = round(arr.shape[0])
-        self.n_i = np.matrix(np.linspace(0, self.N_i - 1, self.N_i))
-        self.k_i = (
-            np.matrix(np.linspace(0, self.N_i - 1, self.N_i)) * 2 * np.pi / self.N_i
-        )
-        self.c_i = np.cos(self.k_i.T * self.n_i[:, : round(self.N_i / 2)])
-        self.s_i = np.sin(self.k_i.T * self.n_i[:, : round(self.N_i / 2)])
-        self.C_k_i = (self.c_i * C_k).T
-        self.S_k_i = (self.s_i * S_k).T
+        
+        Ck, Sk = self._operator(arr, 0, "IDFT")
 
-        return self.C_k_i, self.S_k_i
+        Ck_i = np.matmul(Ck, C_k).T
+        Sk_i = np.matmul(Sk, S_k).T
+        
+        return Ck_i, Sk_i
 
 # define power spectrum class
 class power_spectrum(Fourier_trans):
     def __init__(self):
-        self.C_k_p = None
-        self.S_k_p = None
-        self.A_c = None
-        self.B_c = None
-        self.a_c = None
-        self.b_c = None
         self.A = None
         self.B = None
         self.a = None
@@ -58,110 +54,84 @@ class power_spectrum(Fourier_trans):
         self.power_pos = None
         self.power_neg = None
 
-    def Nyquist(self, arr, arr_o, axis):
+    def _Nyquist(self, arr, arr_o, axis):
         arr_new = arr[0 : round(arr_o.shape[axis] / 2), :]
         arr_new = arr_new * 2
         return arr_new
 
     def power_coe(self, arr):
-        self.C_k_p, self.S_k_p = self.DFT(arr)
-        self.C_k_p = self.Nyquist(self.C_k_p, arr, 1)
-        self.S_k_p = self.Nyquist(self.S_k_p, arr, 1)
+        Ck, Sk = self.DFT(arr)
+        Ck = self._Nyquist(Ck, arr, 1)
+        Sk = self._Nyquist(Sk, arr, 1)
 
-        self.A_c, self.B_c = self.DFT(self.C_k_p)
-        self.a_c, self.b_c = self.DFT(self.S_k_p)
+        A, B = self.DFT(Ck)
+        a, b = self.DFT(Sk)
 
-        self.A_c = self.Nyquist(self.A_c, arr, 0) 
-        self.B_c = self.Nyquist(self.B_c, arr, 0) 
-        self.a_c = self.Nyquist(self.a_c, arr, 0) 
-        self.b_c = self.Nyquist(self.b_c, arr, 0) 
-
-        return np.asarray([self.A_c, self.B_c, self.a_c, self.b_c])
+        self.A = self._Nyquist(A, arr, 0) 
+        self.B = self._Nyquist(B, arr, 0) 
+        self.a = self._Nyquist(a, arr, 0)
+        self.b = self._Nyquist(b, arr, 0)
+        
+        return self.A, self.B, self.a, self.b
 
     def power_spec(self, arr):
-        self.A, self.B, self.a, self.b = self.power_coe(arr)
-
-        self.power_pos = 1 / 8 * (
-            np.power(self.A, 2)
-            + np.power(self.B, 2)
-            + np.power(self.a, 2)
-            + np.power(self.b, 2)
-        ) + 1 / 4 * (np.multiply(self.a, self.B) - np.multiply(self.b, self.A))
+        A, B, a, b = self.power_coe(arr)
+         
         self.power_neg = 1 / 8 * (
-            np.power(self.A, 2)
-            + np.power(self.B, 2)
-            + np.power(self.a, 2)
-            + np.power(self.b, 2)
-        ) - 1 / 4 * (np.multiply(self.a, self.B) - np.multiply(self.b, self.A))
+            np.power(A, 2)
+            + np.power(B, 2)
+            + np.power(a, 2)
+            + np.power(b, 2)
+        ) + 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
+        
+        self.power_pos = 1 / 8 * (
+            np.power(A, 2)
+            + np.power(B, 2)
+            + np.power(a, 2)
+            + np.power(b, 2)
+        ) - 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
+        
+        ps = np.append(self.power_neg[:, ::-1], self.power_pos, axis=1)
 
-        return self.power_pos, self.power_neg
+        return ps
 
 class reconstruction(power_spectrum):
     def __init__(self):
-        self.A_r = None
-        self.B_r = None
-        self.a_r = None
-        self.b_r = None
-        self.east_r = None
-        self.east_i = None
-        self.west_r = None
-        self.west_i = None
-        self.east = None
-        self.west = None
-        self.re_wave_i = None
-        self.re_wave_r = None
         self.re_wave = None
-        self.A_e = None
-        self.B_e = None
-        self.a_e = None
-        self.b_e = None
-        self.real_east = None
-        self.real_west = None
-        self.imag_east = None
-        self.imag_west = None
-        self.real_wind = None
-        self.imag_wind = None
-        self.wind_C = None
-        self.wind_S = None
-        self.wind_C_i = None
-        self.wind_S_i = None
-        self.wind_inv1 = None
-        self.wind_R = None
-        self.wind_I = None
+        self.wind_R  = None
+        self.wind_I  = None
 
     def recon_wave(self, arr):
-        self.A_r, self.B_r, self.a_r, self.b_r = self.power_coe(arr)
-        self.east_r, self.east_i = self.IDFT(self.A_r, self.B_r, arr)
-        self.west_r, self.west_i = self.IDFT(self.a_r, self.b_r, arr)
+        A, B, a, b = self.power_coe(arr)
+        Ereal, Eimag = self.IDFT(A, B, arr)
+        Wreal, Wimag = self.IDFT(a, b, arr)
 
-        self.east = self.east_r + self.east_i
-        self.west = self.west_r + self.west_i
+        Ewave = Ereal + Eimag
+        Wwave = Wreal + Wimag
 
-        self.re_wave_r, self.re_wave_i = self.IDFT(self.east, self.west, arr.T)
-        self.re_wave = self.re_wave_r + self.re_wave_i
+        RWreal, RWimag = self.IDFT(Ewave, Wwave, arr.T)
+        self.re_wave = RWreal + RWimag
 
         return self.re_wave
 
     def e_w_trans(self, arr_c):
-        self.A_e, self.B_e, self.a_e, self.b_e = arr_c
-        self.real_east = 1 / 4 * (self.A_e - self.b_e)
-        self.imag_east = 1 / 4 * (-self.B_e - self.a_e)
-        self.real_west = 1 / 4 * (self.A_e + self.b_e)
-        self.imag_west = 1 / 4 * (self.B_e - self.a_e)
-        return np.array(
-            [self.real_east, self.imag_east, self.real_west, self.imag_west]
-        )
+        A, B, a, b = arr_c
+        Ereal = 1 / 4 * (A - b)
+        Eimag = 1 / 4 * (-B - a)
+        Wreal = 1 / 4 * (A + b)
+        Wimag = 1 / 4 * (B - a)
+        return Ereal, Eimag, Wreal, Wimag
 
     def east_recon(self, arr, arr_item):
-        self.real_wind, self.imag_wind = arr_item
-        self.wind_C = (1 + 0j) * (self.real_wind) + (0 + 1j) * (self.imag_wind)
-        self.wind_S = (1 + 0j) * (self.imag_wind) - (0 + 1j) * (self.real_wind)
-        self.wind_C_i, self.wind_S_i = self.IDFT(self.wind_C, self.wind_S, arr)
-        self.wind_inv1 = self.wind_C_i - self.wind_S_i
-        self.wind_R = np.real(self.wind_inv1)
-        self.wind_I = np.imag(self.wind_inv1)
+        Wreal, Wimag = arr_item
+        WCk = (1 + 0j) * Wreal + (0 + 1j) * Wimag
+        WSk = (1 + 0j) * Wimag - (0 + 1j) * Wreal
+        WCk_i, WSk_i = self.IDFT(WCk, WSk, arr)
+        Winv = WCk_i - WSk_i
+        self.wind_R = Winv.real
+        self.wind_I = Winv.imag
 
-        return np.asarray([self.wind_R, self.wind_I])
+        return self.wind_R, self.wind_I
 
 def genDispersionCurves(nWaveType=6, nPlanetaryWave=50, rlat=0, Ahe=[50, 25, 12]):
     """
@@ -283,3 +253,11 @@ def genDispersionCurves(nWaveType=6, nPlanetaryWave=50, rlat=0, Ahe=[50, 25, 12]
                 else:
                     Afreq[ww-1,ed-1,wn-1] = fillval
     return  Afreq, Apzwn
+
+def PC_com(data, EOF):
+    xTx = np.matmul(EOF.T, EOF)
+    xTx_i = np.linalg.inv(xTx)
+    theta = np.matmul(np.matmul(xTx_i, EOF.T), data)
+
+    return theta
+
