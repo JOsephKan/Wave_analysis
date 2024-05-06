@@ -45,15 +45,15 @@ def asy(
     np.ndarray
         The asymmetric component of the data
     """
-    if lat[0] < 0.0:
+    if lat[0] > 0.0:
         raise ValueError("Please make the latitude values in descending order")
 
     lat_sum = np.sum(np.cos(np.deg2rad(lat)))
 
     halflat = int(lat.shape[0] / 2)
 
-    asy_lat = np.cos(np.deg2rad(np.concatenate(lat[:halflat], lat[halflat:])))
-
+    asy_lat = np.concatenate(-np.cos(np.deg2rad(lat[:halflat])), np.cos(np.deg2rad(asy_lat[halflat:])))
+    
     weighted = data * asy_lat[None, :, None]
 
     avg_asy = np.sum(weighted, axis=1) / lat_sum
