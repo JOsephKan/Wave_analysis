@@ -52,7 +52,7 @@ def _Nyquist(arr, arr_o, axis):
         The result of applying the Nyquist operator to the input array.
     """
     arr_new = arr[0 : round(arr_o.shape[axis] / 2), :]
-    arr_new = np.concatenate([arr_new[0, :]], arr_new[1:, :]*2, axis=0)
+    arr_new = np.concatenate(([arr_new[0, :]], arr_new[1:, :]*2), axis=0)
     return arr_new
 
 def DFT(arr):
@@ -91,8 +91,12 @@ def IDFT(C_k, S_k, arr):
         The imaginary part of the Inverse Fourier Transform result.
     """
     Ck, Sk = _FTOperator(arr, 0, "IDFT")
-    Ck_i = np.matmul(Ck, C_k).T
-    Sk_i = np.matmul(Sk, S_k).T
+
+    op     = Ck  + 1j * Sk
+    filted = C_k + 1j * S_k
+
+    Ck_i = np.real(np.matmul(op, filted)).T
+    Sk_i = np.imag(np.matmul(op, filted)).T
     return Ck_i, Sk_i
 
 def PowerCoeff(arr):
@@ -142,7 +146,7 @@ def PowerSpec(arr):
     power_pos = 1 / 8 * (np.power(A, 2) + np.power(B, 2) + np.power(a, 2) + np.power(b, 2)) - 1 / 4 * (np.multiply(a, B) - np.multiply(b, A))
     ps = np.append(power_neg[:, ::-1], power_pos, axis=1)
     return ps
-
+"""
 class reconstruction(power_spectrum):
     def __init__(self):
         self.re_wave = None
@@ -154,11 +158,11 @@ class reconstruction(power_spectrum):
         Ereal, Eimag = self.IDFT(A, B, arr)
         Wreal, Wimag = self.IDFT(a, b, arr)
 
-        Ewave = Ereal + Eimag
-        Wwave = Wreal + Wimag
+        Ewave = Ereal + 1j*Eimag
+        Wwave = Wreal + 1j*Wimag
 
         RWreal, RWimag = self.IDFT(Ewave, Wwave, arr.T)
-        self.re_wave = RWreal + RWimag
+        self.re_wave = RWreal + 1j*RWimag
 
         return self.re_wave
 
@@ -180,6 +184,8 @@ class reconstruction(power_spectrum):
         self.wind_I = Winv.imag
 
         return self.wind_R, self.wind_I
+
+"""
 
 def genDispersionCurves(nWaveType=6, nPlanetaryWave=50, rlat=0, Ahe=[50, 25, 12]):
     """
