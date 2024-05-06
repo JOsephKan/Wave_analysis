@@ -2,8 +2,8 @@
 import numpy as np
 
 def sym(
-        lat : np.ndarray,
-        data: np.ndarray,
+    lat : np.ndarray,
+    data: np.ndarray,
 ) -> np.ndarray:
     """
     This function calculates the symmetric component of the data
@@ -28,11 +28,12 @@ def sym(
     return avg_sym
 
 def asy(
-        lat : np.ndarray,
-        data: np.ndarray,
+    lat : np.ndarray,
+    data: np.ndarray,
 )->np.ndarray:
     """
     This function calculates the asymmetric component of the data
+    Please make the latitude values in descending order before using this function
     Parameters
     ----------
     lat : np.ndarray
@@ -45,18 +46,13 @@ def asy(
         The asymmetric component of the data
     """
     if lat[0] < 0.0:
-        lat = lat[::-1]
-        data = data[:, ::-1, :]
+        raise ValueError("Please make the latitude values in descending order")
 
     lat_sum = np.sum(np.cos(np.deg2rad(lat)))
 
-    asy_lat = np.empty_like(lat)
-    asy_lat[: int(lat.shape[0] / 2)] = np.cos(
-        np.deg2rad(lat[: int(lat.shape[0] / 2)])
-    )
-    asy_lat[int(lat.shape[0] / 2) :] = -np.cos(
-        np.deg2rad(lat[int(lat.shape[0] / 2) :])
-    )
+    halflat = int(lat.shape[0] / 2)
+
+    asy_lat = np.cos(np.deg2rad(np.concatenate(lat[:halflat], lat[halflat:])))
 
     weighted = data * asy_lat[None, :, None]
 
@@ -65,8 +61,8 @@ def asy(
     return avg_asy
 
 def background(
-        data        : np.ndarray,
-        smoothtimes : int,
+    data        : np.ndarray,
+    smoothtimes : int,
 ) -> np.ndarray:
     """
     Applies background smoothing to the input data.
