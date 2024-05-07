@@ -42,7 +42,7 @@ function asy(
 end
 
 function filt(
-    data :: Matrix{Float64},
+    data ,
     num_of_passes :: Int64
 )
     padded_data = Array{Float64}(undef, size(data, 1), size(data, 2)+2)

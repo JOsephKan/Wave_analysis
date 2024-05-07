@@ -52,7 +52,7 @@ def asy(
 
     halflat = int(lat.shape[0] / 2)
 
-    asy_lat = np.concatenate(-np.cos(np.deg2rad(lat[:halflat])), np.cos(np.deg2rad(asy_lat[halflat:])))
+    asy_lat = np.concatenate((-np.cos(np.deg2rad(lat[:halflat])), np.cos(np.deg2rad(lat[halflat:]))))
     
     weighted = data * asy_lat[None, :, None]
 

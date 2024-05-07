@@ -22,13 +22,13 @@ def _FTOperator(arr, dim, func):
     """
     
     N  = int(arr.shape[dim])
-    n  = (np.linspace(0, N-1, N)).reshape((1, N))
-    k  = (2.*np.pi*np.linspace(0, N-1, N)/N).reshape((N, 1))
-    op = np.exp(1j*(k*n))
+    n  = np.matrix(np.linspace(0, N-1, N))
+    k  = np.matrix(2.*np.pi*np.linspace(0, N-1, N)/N)
+    op = np.exp(1j*(k.T*n))
     if (func=="DFT"):
-        op_DFT = np.matmul(op, arr.T)/N
-        Ck = op_DFT.real
-        Sk = op_DFT.imag
+        op_DFT = op/N
+        Ck = op_DFT.real*arr.T
+        Sk = op_DFT.imag*arr.T
     elif (func=="IDFT"):
         op_IDFT = op[:, :round(N/2.)]
         Ck = op_IDFT.real
@@ -52,7 +52,7 @@ def _Nyquist(arr, arr_o, axis):
         The result of applying the Nyquist operator to the input array.
     """
     arr_new = arr[0 : round(arr_o.shape[axis] / 2), :]
-    arr_new = np.concatenate(([arr_new[0, :]], arr_new[1:, :]*2), axis=0)
+    arr_new = np.concatenate((arr_new[0, :], arr_new[1:, :]*2), axis=0)
     return arr_new
 
 def DFT(arr):

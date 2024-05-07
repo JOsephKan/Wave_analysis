@@ -14,8 +14,9 @@ function _Nyquist(
 
     arr_new :: Matrix{Float64} = arr[1:round(Int32, size(arr_org, dim)/2), :]
     arr_dob :: Matrix{Float64} = similar(arr_new)
-    arr_dob[1, :] = arr_new[1, :]
-    arr_dob[2:end, :] = 2 * arr_new[2:end, :]
+    
+    arr_dob[1, :]     = arr_new[1, :]
+    arr_dob[2:end, :] = arr_new[2:end, :].*2
 
     return arr_dob
 end
