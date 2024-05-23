@@ -1,84 +1,58 @@
 # import pamonth_data
 import numpy as np
 
-def sym(
-    lat : np.ndarray,
-    data: np.ndarray,
-) -> np.ndarray:
+def sym(lat: np.ndarray, arr: np.ndarray):
     """
-    This function calculates the symmetric component of the data
-    Parameters
-    ----------
-    lat : np.ndarray
-        The latitude values
-    data : np.ndarray
-        The data values
-    Returns
-    -------
-    np.ndarray
-        The symmetric component of the data
-    """
-    sym_lat = np.cos(np.deg2rad(lat))
-    lat_sum = np.sum(sym_lat)
-    
-    weighted = data * sym_lat[None, :, None]
+    Calculate the symmetrical array based on the input latitude and array.
 
-    avg_sym = np.sum(weighted, axis=1) / lat_sum
-
-    return avg_sym
-
-def asy(
-    lat : np.ndarray,
-    data: np.ndarray,
-)->np.ndarray:
-    """
-    This function calculates the asymmetric component of the data
-    Please make the latitude values in descending order before using this function
-    Parameters
-    ----------
-    lat : np.ndarray
-        The latitude values
-    data : np.ndarray
-        The data values
-    Returns
-    -------
-    np.ndarray
-        The asymmetric component of the data
-    """
-    if lat[0] > 0.0:
-        raise ValueError("Please make the latitude values in descending order")
-
-    lat_sum = np.sum(np.cos(np.deg2rad(lat)))
-
-    halflat = int(lat.shape[0] / 2)
-
-    asy_lat = np.concatenate((-np.cos(np.deg2rad(lat[:halflat])), np.cos(np.deg2rad(lat[halflat:]))))
-    
-    weighted = data * asy_lat[None, :, None]
-
-    avg_asy = np.sum(weighted, axis=1) / lat_sum
-
-    return avg_asy
-
-def background(
-    data        : np.ndarray,
-    smoothtimes : int,
-) -> np.ndarray:
-    """
-    Applies background smoothing to the input data.
-
-    Parameters:
-        data (np.ndarray): The input data to be smoothed.
-        smoothtimes (int): The number of times the smoothing operation should be applied.
+    Args:
+        lat (np.ndarray): The latitude array.
+        arr (np.ndarray): The input array.
 
     Returns:
-        np.ndarray: The smoothed data.
+        np.ndarray: The symmetrical array.
+
+    Input shape: (time, lat, lon)
+    """
+    latr = np.cos(np.deg2rad(lat))
+
+    sym_arr =np.sum (arr * latr[None, :, None], axis=1) / np.sum(latr)
+
+    return sym_arr
+
+
+def asy(lat: np.ndarray, data: np.ndarray):
+    """
+    Calculate the asymmetric component of the given data based on latitude.
+
+    Parameters:
+        lat (np.ndarray): Array of latitudes.
+        data (np.ndarray): Array of data.
+
+    Returns:
+        np.ndarray: Array containing the asymmetric component of the data.
 
     """
-    smoothed = np.copy(data)
-    for _ in range(smoothtimes):
-        padded = np.pad(smoothed, (1, 1), mode="reflect")
-        smoothed = (
-            padded[:, :-2] + padded[:, 1:-1]*2 + padded[:, 2:]
-        ) / 4.0
-    return smoothed
+    latr = np.cos(np.deg2rad(lat))
+
+    idx = np.where(lat < 0)
+
+    data_asy = data * latr[None, :, None]
+
+    data_asy[idx] = -data_asy[idx]
+
+    data_asy = np.sum(data_asy, axis=1) / np.sum(latr)
+
+    return data_asy
+
+def filt(arr: np.ndarray, num_of_pass:np.int64):
+    arr_bg = arr.copy()
+
+    for _ in range(num_of_pass):
+
+        left = np.concatenate((np.array([arr_bg[:, 1]]).T, arr_bg[:, :-1]), axis=1)
+        right = np.concatenate((arr_bg[:, 1:], np.array([arr_bg[:, -2]]).T), axis=1)
+
+        arr_bg = (2*arr_bg+left+right)/4
+
+    return arr_bg

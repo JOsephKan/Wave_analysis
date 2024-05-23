@@ -40,14 +40,11 @@ function EmpOrthFunc(
     ExpVar :: Vector{Float64} = (EigVal./sum(EigVal))[end:-1:1][1:n]
 
     EigVec :: Matrix{Float64} = eigvecs(CovMat)[:, end:-1:1][:, 1:n]
+    EOF    :: Matrix{Float64} = (EigVec .- mean(EigVec, dims=1))./std(EigVec, dims=1)
 
-    PCs    :: Matrix{Float64} = normal_equ(EigVec, data)[end:-1:1, :][1:n, :]
+    PCs    :: Matrix{Float64} = normal_equ(EOF, data)[end:-1:1, :][1:n, :]
 
-    PCs_norm :: Matrix{Float64} = (PCs.-mean(PCs, dims=2))./(std(PCs, dims=2))
-    
-    EOF    :: Matrix{Float64} = data*(PCs_norm'*inv(PCs_norm*PCs_norm'))
-
-    return ExpVar, EOF, PCs_norm
+    return ExpVar, EOF, PCs
 end
 
 end
