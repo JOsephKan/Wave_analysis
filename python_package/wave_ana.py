@@ -21,17 +21,17 @@ def _Nyquist(arr: np.ndarray):
 
     return arr_new
 
-def PowerCoeff(arr: np.ndarray):
+def PowerSpec(arr: np.ndarray) -> np.ndarray:
     """
-    Calculate the power coefficients of a given array.
+    Calculate the power spectrum of a given array.
 
     Parameters:
-    arr (np.ndarray): The input array.
+        arr (np.ndarray): The input array of shape (time, space).
 
     Returns:
-    tuple: A tuple containing the power coefficients A, B, a, and b.
+        np.ndarray: The power spectrum of the input array.
+
     """
-    
     arr_fft = (np.fft.fft(arr, axis=0)/np.pi).T
     
     Ck = _Nyquist(arr_fft.real/arr_fft.shape[0]*2)
@@ -45,25 +45,12 @@ def PowerCoeff(arr: np.ndarray):
     a = _Nyquist(SkFFT.real/SkFFT.shape[0]*2)
     b = _Nyquist(SkFFT.imag/SkFFT.shape[0]*2)
 
-    return A, B, a, b
-
-def PowerSpec(arr: np.ndarray) -> np.ndarray:
-    """
-    Calculates the power spectrum of the given array.
-
-    Parameters:
-    arr (np.ndarray): The input array.
-
-    Returns:
-    np.ndarray: The power spectrum of the input array.
-    """
-    A, B, a, b = PowerCoeff(arr)
-
     east = (np.power(A+b, 2) + np.power((B-a), 2))/8
     west = (np.power(A-b, 2) + np.power((-B-a), 2))/8
-    ps = np.concatenate((west[:, ::-1], east), axis=1)
-    return ps
 
+    ps = np.concatenate((west[:, ::-1], east), axis=1)
+
+    return ps
 
 """
 class reconstruction(power_spectrum):
