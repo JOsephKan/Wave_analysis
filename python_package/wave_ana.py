@@ -50,7 +50,7 @@ def PowerSpec(arr: np.ndarray) -> np.ndarray:
 
     ps = np.concatenate((west[:, ::-1], east), axis=1)
 
-    return ps
+    return A, B, a, b, ps
 
 """
 class reconstruction(power_spectrum):
