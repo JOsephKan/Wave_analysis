@@ -1,58 +1,40 @@
-# import packages
+# import package
 import numpy as np
 
-def NormalEqu(
-        arr: np.ndarray,
-        EOF: np.ndarray
-        ) -> np.ndarray:
+
+def compute_normal_equation(X, y):
     """
-    Calculates the principal components using the Normal Equations method.
+    Computes the normal equation to solve for the optimal parameters theta in a linear regression problem.
 
     Parameters:
-    arr (np.ndarray): The input array of shape (m, n), where m is the number of samples and n is the number of features.
+    X (numpy.ndarray): The input feature matrix of shape (m, n), where m is the number of training examples and n is the number of features.
+    y (numpy.ndarray): The target values of shape (m, 1), where m is the number of training examples.
 
     Returns:
-    np.ndarray: The principal components of shape (m, n).
+    numpy.ndarray: The optimal parameters theta of shape (n, 1), where n is the number of features.
 
-    Raises:
-    None
-
-    Example:
-    >>> arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    >>> NormalEqu(arr)
-    array([[-0.23197069, -0.78583024, -1.33968979],
-        [ 0.78583024,  0.        , -0.78583024],
-        [ 1.80363117,  0.78583024, -0.23197069]])
     """
+    X_transpose_X_inv = np.linalg.inv(X.T @ X)
+    theta = X_transpose_X_inv @ X.T @ y
+    return theta
 
-    xTx = np.linalg.inv(np.dot(EOF.T, EOF))
-    op = np.dot(xTx, EOF.T)
-    PCs = np.dot(op, arr)
-
-    return PCs
-
-def EmpOrthFunc(
-        data : np.ndarray,
-) -> np.ndarray:
+def EOF(arr):
     """
-    This function calculates the empirical orthogonal function of the data
-    Parameters
-    ----------
-    data : np.ndarray
-        The data values
-    Returns
-    -------
-    np.ndarray
-        The empirical orthogonal function of the data
+    Performs Empirical Orthogonal Function (EOF) analysis on the given array.
+
+    Parameters:
+    arr (numpy.ndarray): The input array for EOF analysis.
+
+    Returns:
+    tuple: A tuple containing the following:
+        - ExpVar (numpy.ndarray): The explained variance for each EOF mode.
+        - eigvec (numpy.ndarray): The eigenvectors corresponding to each EOF mode.
+        - pcs (numpy.ndarray): The principal components of the input array.
+
     """
-    # Calculate the covariance matrix
-    cov = np.cov(data)
-    # Calculate the eigenvalues and eigenvectors
-    eigvals, eigvecs = np.linalg.eig(cov)
-    
-    ExpVar  = eigvals / np.sum(eigvals)
-    PCs     = NormalEqu(data, eigvecs)
-    NormPCs = (PCs-PCs.mean(axis=1))/PCs.std(axis=1)
-    eof     = data*(NormPCs.T*np.linalg.inv(NormPCs*NormPCs.T))
-    
-    return eof
+    CovMat = np.cov(arr)
+    eigval, eigvec = np.linalg.eig(CovMat)
+    ExpVar = eigval / np.sum(eigval)
+    pcs = compute_normal_equation(eigvec, arr)
+    return ExpVar, eigvec, pcs
+
