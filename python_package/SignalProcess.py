@@ -2,7 +2,8 @@ import numpy as np
 
 def PowerCoeff(
         arr: np.matrix
-) -> tuple[np.matrix, np.matrix, np.matrix, np.matrix]:
+        ) -> np.ndarray:
+
     """Calculate the power coefficients of a given matrix.
 
     This function calculates the power coefficients of a given matrix using the Fast Fourier Transform (FFT).
@@ -12,21 +13,21 @@ def PowerCoeff(
 
     Returns:
         tuple[np.matrix, np.matrix, np.matrix, np.matrix]: A tuple containing the power coefficients A, B, a, and b.
-    """    
+    """
     arr_fft = (np.fft.fft(arr, axis=0) / np.pi).T
 
-    Ck = arr_fft.real * 2
-    Sk = arr_fft.imag * 2
+    Ck = arr_fft.real
+    Sk = arr_fft.imag
 
     Ck_fft = (np.fft.fft(Ck, axis=0) / np.pi).T
     Sk_fft = (np.fft.fft(Sk, axis=0) / np.pi).T
 
-    A = Ck_fft.real * 2
-    B = Ck_fft.imag * 2
-    a = Sk_fft.real * 2
-    b = Sk_fft.imag * 2
+    A = Ck_fft.real
+    B = Ck_fft.imag
+    a = Sk_fft.real
+    b = Sk_fft.imag
 
-    return A, B, a, b
+    return np.array([A, B, a, b])
 
 def PowerSpec(arr: np.matrix) -> np.matrix:
     """
@@ -38,19 +39,19 @@ def PowerSpec(arr: np.matrix) -> np.matrix:
     Returns:
     np.matrix: The power spectrum matrix.
     """
-    
+
     A, B, a, b = PowerCoeff(arr)
 
     east = ((np.power(A + b, 2) + np.power(B - a, 2)) / 8)[:arr.shape[0]//2, :arr.shape[1]//2]
     west = ((np.power(A - b, 2) + np.power(-B - a, 2)) / 8)[:arr.shape[0]//2, :arr.shape[1]//2]
 
     ps = np.concatenate((west[:, ::-1], east), axis=1) / (arr.shape[0] * arr.shape[1]) ** 2
-        
+
     return ps
 
 def Recon(
         A: np.matrix, B: np.matrix, a: np.matrix, b: np.matrix
-) -> np.matrix:
+        ) -> np.matrix:
     """Reconstructs the wave data from the computed power coefficients.
 
     Args:
@@ -62,7 +63,7 @@ def Recon(
     Returns:
         np.matrix: The reconstructed wave data.
     """
-    
+
     Ck_inv = np.fft.ifft(A + 1j * B, axis=1)
     Sk_inv = np.fft.ifft(a + 1j * b, axis=1)
 
